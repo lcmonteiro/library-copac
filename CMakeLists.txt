@@ -12,7 +12,7 @@ add_library(copac INTERFACE)
 # target configuration
 target_include_directories(copac
 INTERFACE
-	./inc
+	./include
 )
 
 # test

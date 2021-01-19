@@ -7,7 +7,5 @@
 
 #pragma once
 
-#include "copac/variable.hpp"
-#include "copac/operator.hpp"
 #include "copac/cast.hpp"
-
+#include "copac/variable.hpp"

@@ -1,5 +1,5 @@
 /// ===============================================================================================
-/// @file      : copac.hpp                                          __|   _ \   __ \    _` |   __|
+/// @file      : copac/variable.hpp                                 __|   _ \   __ \    _` |   __|
 /// @copyright : 2019 LCMonteiro                                   (     (   |  |   |  (   |  (
 ///                                                               \___| \___/   .__/  \__,_| \___|
 /// @author    : Luis Monteiro                                                 _|
@@ -9,7 +9,6 @@
 
 #include <map>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -71,72 +70,41 @@ namespace copac {
     }
 
     /// ===========================================================================================
-    /// Default Casts
-    /// ===========================================================================================
-    namespace cast {
-        struct exception: std::runtime_error{
-            using std::runtime_error::runtime_error;
-        };
-
-        template<typename Result, typename Type>
-        constexpr std::enable_if_t<false==std::is_same_v<Result, Type>, Result>
-        to(Type val) {
-            throw exception(
-                std::string(typeid(Type).name()) + " --> " + typeid(Result).name());
-        }
-        template<typename Result, typename Type>
-        constexpr std::enable_if_t<true==std::is_same_v<Result, Type>, Result>
-        to(Type val) {
-            return val;
-        }
-
-        template<typename P> static constexpr P& to(std::shared_ptr<P> ptr){ return *ptr;}
-        template<typename P> static constexpr P& to(std::unique_ptr<P> ptr){ return *ptr;}
-        template<typename P> static constexpr P& to(std::weak_ptr<P> ptr){
-            if(auto p = ptr.lock())
-                return *ptr;
-            throw exception("var not found");
-        }
-    }
-
-    /// ===========================================================================================
     /// var
     /// @brief
     /// ===========================================================================================
     template <
-        typename Map      = concepts::map<std::map, int>,
+        typename Map      = concepts::map<std::map, std::string>,
         typename List     = concepts::list<std::vector>,
         typename String   = concepts::string<std::string>,
         typename Buffer   = concepts::buffer<std::vector<uint8_t>>,
         typename Integer  = concepts::integer<int>,
-        typename Floating = concepts::floating<float>>
+        typename Floating = concepts::floating<double>>
     class var {
         template <typename Type>
         using connector_t = std::variant<std::shared_ptr<Type>>;
 
-        template <typename Type>
         using container_t = std::variant<
-            typename Map::template  type<connector_t<Type>>,
-            typename List::template type<connector_t<Type>>,
+            typename Map::template  type<var>,
+            typename List::template type<var>,
             typename String::type,
             typename Integer::type,
             typename Floating::type>;
-
-        struct object : public container_t<object> {
-            using container_t<object>::container_t;
-            using container_t<object>::operator=;
+        struct object : public container_t {
+            using container_t::container_t;
+            using container_t::operator=;
             template <typename Callable, typename...Objs>
             static constexpr decltype(auto) visit(Callable&& fn, Objs&&... objs){
                 return std::visit(
                     std::forward<Callable>(fn), 
-                    static_cast<const container_t<object>&>(objs) ...);
+                    static_cast<const container_t&>(objs) ...);
             }
         };
 
     public:
         /// types
-        using map_t      = typename Map::template  type<connector_t<object>>;
-        using list_t     = typename List::template type<connector_t<object>>;
+        using map_t      = typename Map::template  type<var>;
+        using list_t     = typename List::template type<var>;
         using string_t   = typename String::type;
         using buffer_t   = typename Buffer::type;
         using integer_t  = typename Integer::type;
@@ -151,7 +119,7 @@ namespace copac {
           conn_(std::make_shared<object>([&]{
               auto lst = list_t();
               for(auto& v : l) 
-                lst.push_back(std::move(v.conn_));
+                lst.push_back(std::move(v));
               return lst;
           }())){}
 
@@ -160,17 +128,16 @@ namespace copac {
           conn_(std::make_shared<object>([&]{
               auto map = map_t();
               for(auto&[k, v] : l) 
-                map[cast::to<typename map_t::key_type>(k)] = std::move(v.conn_);
+                map[cast<typename map_t::key_type>(k)] = std::move(v);
               return map;
           }())){}
 
         /// visit 
         template <typename Callable, typename...Vars>
         static constexpr auto visit(Callable&& fn, Vars&&... vs){
-            return std::visit(
-                [&](auto&&...a){ 
-                    return object::visit(std::forward<Callable>(fn), cast::to<object>(a)... ); 
-                }, vs.conn_ ...);
+            return std::visit([&](auto&&...a){ 
+                return object::visit(std::forward<Callable>(fn), cast<object>(a)... ); 
+            }, vs.conn_ ...);
         }
 
     private:
