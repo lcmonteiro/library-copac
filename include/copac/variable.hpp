@@ -46,7 +46,7 @@ namespace copac {
         template <template <typename, typename ...> typename Base>
         struct list {
             // requirements
-            static_assert(detected_v<decltype(Base<int>().push_back(int()))>);
+            static_assert(detected_v<decltype(Base<int>().emplace_back(int()))>);
 
             template <typename Connector>
             using type = Base<Connector>;
@@ -119,7 +119,7 @@ namespace copac {
           conn_(std::make_shared<object>([&]{
               auto lst = list_t();
               for(auto& v : l) 
-                lst.push_back(std::move(v));
+                lst.emplace_back(std::move(v));
               return lst;
           }())){}
 
@@ -128,7 +128,7 @@ namespace copac {
           conn_(std::make_shared<object>([&]{
               auto map = map_t();
               for(auto&[k, v] : l) 
-                map[cast<typename map_t::key_type>(k)] = std::move(v);
+                map.emplace(cast<typename map_t::key_type>(k), std::move(v));
               return map;
           }())){}
 
