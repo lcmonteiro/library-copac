@@ -16,14 +16,14 @@ namespace copac {
     /// serialize
     /// ===========================================================================================
     template<typename...Ts>
-    std::ostream& operator<<(std::ostream &os, const var<Ts...>& a) {
-        using map_t      = typename var<Ts...>::map_t;
-        using list_t     = typename var<Ts...>::list_t;
-        using string_t   = typename var<Ts...>::string_t;
-        using buffer_t   = typename var<Ts...>::buffer_t;
-        using integer_t  = typename var<Ts...>::integer_t;
-        using floating_t = typename var<Ts...>::floating_t;
-        var<Ts...>::visit(select{
+    std::ostream& operator<<(std::ostream &os, const basic_var<Ts...>& a) {
+        using map_t      = typename basic_var<Ts...>::map_t;
+        using list_t     = typename basic_var<Ts...>::list_t;
+        using string_t   = typename basic_var<Ts...>::string_t;
+        using buffer_t   = typename basic_var<Ts...>::buffer_t;
+        using integer_t  = typename basic_var<Ts...>::integer_t;
+        using floating_t = typename basic_var<Ts...>::floating_t;
+        basic_var<Ts...>::visit(select{
             [&os](const map_t& a){
                 os << '{';
                 if(auto it = std::begin(a); it != std::end(a)) {
@@ -119,11 +119,11 @@ namespace copac {
     }
 
     template<typename...Ts>
-    std::istream& operator>>(std::istream &is, var<Ts...>& v) {    
-        using map_t      = typename var<Ts...>::map_t;
-        using list_t     = typename var<Ts...>::list_t;
-        using integer_t  = typename var<Ts...>::integer_t;
-        using floating_t = typename var<Ts...>::floating_t;
+    std::istream& operator>>(std::istream &is, basic_var<Ts...>& v) {    
+        using map_t      = typename basic_var<Ts...>::map_t;
+        using list_t     = typename basic_var<Ts...>::list_t;
+        using integer_t  = typename basic_var<Ts...>::integer_t;
+        using floating_t = typename basic_var<Ts...>::floating_t;
 
         auto cache = std::string();
         auto parse = std::function<char()>([&]() {
@@ -143,13 +143,12 @@ namespace copac {
                 case '{': {
                     auto map = map_t{};
                     for(o = parse(); helper::match(o, {':'}); o = parse()) {
-                        var<Ts...>::visit([&](auto k) {
+                        basic_var<Ts...>::visit([&](auto k) {
                             if(o = parse(); !helper::match(o, {'}', ','}))
                                 throw std::runtime_error("parse error (map)");
                             map.emplace(cast<typename map_t::key_type>(k), std::move(v));
                         }, v);
                         if(o == '}') {
-                            std::cout <<__LINE__<<":"<< o <<std::endl;
                             v = std::move(map);
                             return parse();
                         }

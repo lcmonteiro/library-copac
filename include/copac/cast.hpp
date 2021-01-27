@@ -55,7 +55,7 @@ namespace copac {
         struct cast<std::weak_ptr<To>, To>{
             static constexpr To& value(const std::weak_ptr<To>& ptr){
                 if(auto p = ptr.lock())
-                    return *ptr;
+                    return *p;
                 throw cast_error("obj not found");
             }
         };
@@ -88,7 +88,11 @@ namespace copac {
     } 
 
     template<typename To, typename From>
-    To cast(From val) {
+    To cast(const From& val) {
+        return detail::cast<From, To>::value(val);
+    }      
+    template<typename To, typename From>
+    To cast(From& val) {
         return detail::cast<From, To>::value(val);
     }      
 }

@@ -70,7 +70,7 @@ namespace copac {
     }
 
     /// ===========================================================================================
-    /// var
+    /// basic_var
     /// @brief
     /// ===========================================================================================
     template <
@@ -80,13 +80,13 @@ namespace copac {
         typename Buffer   = concepts::buffer<std::vector<uint8_t>>,
         typename Integer  = concepts::integer<int>,
         typename Floating = concepts::floating<double>>
-    class var {
+    class basic_var {
         template <typename Type>
-        using connector_t = std::variant<std::shared_ptr<Type>>;
+        using connector_t = std::shared_ptr<Type>;
 
         using container_t = std::variant<
-            typename Map::template  type<var>,
-            typename List::template type<var>,
+            typename Map::template  type<basic_var>,
+            typename List::template type<basic_var>,
             typename String::type,
             typename Integer::type,
             typename Floating::type>;
@@ -103,8 +103,8 @@ namespace copac {
 
     public:
         /// types
-        using map_t      = typename Map::template  type<var>;
-        using list_t     = typename List::template type<var>;
+        using map_t      = typename Map::template  type<basic_var>;
+        using list_t     = typename List::template type<basic_var>;
         using string_t   = typename String::type;
         using buffer_t   = typename Buffer::type;
         using integer_t  = typename Integer::type;
@@ -112,35 +112,33 @@ namespace copac {
 
         /// constructors
         template <typename... Args>
-        constexpr var(Args... args): 
-          conn_(std::make_shared<object>(std::forward<Args>(args)...)) {}
-
-        constexpr var(std::initializer_list<var> l):
-          conn_(std::make_shared<object>([&]{
-              auto lst = list_t();
-              for(auto& v : l) 
-                lst.emplace_back(std::move(v));
-              return lst;
-          }())){}
+        constexpr basic_var(Args... args): obj_(std::forward<Args>(args)...) {}
 
         template<typename Key>
-        constexpr var(std::initializer_list<std::pair<Key,var>> l):
-          conn_(std::make_shared<object>([&]{
+        constexpr basic_var(std::initializer_list<std::pair<Key,basic_var>> l): obj_([&]{
               auto map = map_t();
               for(auto&[k, v] : l) 
                 map.emplace(cast<typename map_t::key_type>(k), std::move(v));
               return map;
-          }())){}
+          }()){}
+
+        constexpr basic_var(std::initializer_list<basic_var> l): obj_([&]{
+              auto lst = list_t();
+              for(auto& v : l) 
+                lst.emplace_back(std::move(v));
+              return lst;
+          }()){}
 
         /// visit 
         template <typename Callable, typename...Vars>
         static constexpr auto visit(Callable&& fn, Vars&&... vs){
-            return std::visit([&](auto&&...a){ 
-                return object::visit(std::forward<Callable>(fn), cast<object>(a)... ); 
-            }, vs.conn_ ...);
+            return object::visit(std::forward<Callable>(fn), vs.obj_... ); 
         }
 
     private:
-        connector_t<object> conn_;
+        object obj_;
     };
+
+    // default variable type
+    typedef basic_var<> var;   
 }

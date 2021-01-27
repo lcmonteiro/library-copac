@@ -54,6 +54,11 @@
         "ostream": "cpp",
         "sstream": "cpp",
         "streambuf": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "bitset": "cpp",
+        "condition_variable": "cpp",
+        "cstring": "cpp",
+        "regex": "cpp",
+        "shared_mutex": "cpp"
     }
 }
