@@ -70,16 +70,30 @@ namespace copac {
     }
 
     /// ===========================================================================================
+    /// decoratores
+    /// @brief
+    /// ===========================================================================================
+    template <typename Type>
+    struct hard:std::reference_wrapper<Type> {
+        hard(Type& a):std::reference_wrapper<Type>(a){}
+    };
+    template <typename Type>
+    struct soft:std::reference_wrapper<Type> {
+        soft(Type& a):std::reference_wrapper<Type>(a){}
+    };
+    
+    /// ===========================================================================================
     /// basic_var
     /// @brief
     /// ===========================================================================================
     template <
-        typename Map      = concepts::map<std::map, std::string>,
-        typename List     = concepts::list<std::vector>,
-        typename String   = concepts::string<std::string>,
-        typename Buffer   = concepts::buffer<std::vector<uint8_t>>,
-        typename Integer  = concepts::integer<int>,
-        typename Floating = concepts::floating<double>>
+        typename Map      , // = concepts::map<map_t, key_t>,
+        typename List     , // = concepts::list<list_t>,
+        typename String   , // = concepts::string<string_t>,
+        typename Buffer   , // = concepts::buffer<buufer_t>,
+        typename Integer  , // = concepts::integer<int_t>,
+        typename Floating   // = concepts::floating<float_t>
+    >
     class basic_var {
         template <typename Type>
         using connector_t = std::shared_ptr<Type>;
@@ -112,17 +126,17 @@ namespace copac {
 
         /// constructors
         template <typename... Args>
-        constexpr basic_var(Args... args): obj_(std::forward<Args>(args)...) {}
+        constexpr basic_var(Args... args): conn_(std::forward<Args>(args)...) {}
 
         template<typename Key>
-        constexpr basic_var(std::initializer_list<std::pair<Key,basic_var>> l): obj_([&]{
+        constexpr basic_var(std::initializer_list<std::pair<Key,basic_var>> l): conn_([&] {
               auto map = map_t();
               for(auto&[k, v] : l) 
                 map.emplace(cast<typename map_t::key_type>(k), std::move(v));
               return map;
           }()){}
 
-        constexpr basic_var(std::initializer_list<basic_var> l): obj_([&]{
+        constexpr basic_var(std::initializer_list<basic_var> l): conn_([&] {
               auto lst = list_t();
               for(auto& v : l) 
                 lst.emplace_back(std::move(v));
@@ -131,14 +145,47 @@ namespace copac {
 
         /// visit 
         template <typename Callable, typename...Vars>
-        static constexpr auto visit(Callable&& fn, Vars&&... vs){
-            return object::visit(std::forward<Callable>(fn), vs.obj_... ); 
+        static constexpr auto visit(Callable&& fn, Vars&&... vs) {
+            return std::visit([&](auto&&...c){ 
+                return object::visit(std::forward<Callable>(fn), cast<object>(c)... ); 
+            }, vs.conn_ ...);
+        }
+
+        /// links
+        static constexpr auto link(soft<basic_var> a) {
+            return std::visit(select{
+                [&](object& o) { 
+                    auto conn     = std::make_shared<object>(std::move(o));   
+                    a.get().conn_ = conn;
+                    return basic_var(std::weak_ptr(conn)); 
+                },
+                [](std::shared_ptr<object>& o) { return basic_var(std::weak_ptr(o)); },
+                [](std::weak_ptr<object>&   o) { return basic_var(o); }
+            }, a.get().conn_);
+        }
+
+        static constexpr auto link(hard<basic_var> a) {
+            return std::visit(select{
+                [&](object& o) { 
+                    auto conn     = std::make_shared<object>(std::move(o));   
+                    a.get().conn_ = conn;
+                    return basic_var(conn); 
+                },
+                [](std::shared_ptr<object>& o) { return basic_var(o); },
+                [](std::weak_ptr<object>&   o) { return basic_var(o.lock()); } 
+            }, a.get().conn_);
         }
 
     private:
-        object obj_;
+        std::variant<object, std::shared_ptr<object>, std::weak_ptr<object>> conn_;
     };
 
-    // default variable type
-    typedef basic_var<> var;   
+    /// default variable type
+    typedef basic_var<
+        concepts::map<std::map, std::string>,
+        concepts::list<std::vector>,
+        concepts::string<std::string>,
+        concepts::buffer<std::vector<uint8_t>>,
+        concepts::integer<int>,
+        concepts::floating<double>> var;   
 }
