@@ -66,14 +66,14 @@ namespace copac {
     /// ===========================================================================================
     namespace helper {
 
-        bool match(char ch, const std::string& del) {
+        static bool match(char ch, const std::string& del) {
             return std::find(std::begin(del), std::end(del), ch) != std::end(del);
         }
-        bool match(char ch, const std::initializer_list<char>& del) {
+        static bool match(char ch, const std::initializer_list<char>& del) {
             return std::find(std::begin(del), std::end(del), ch) != std::end(del);
         }
 
-        char read_some(std::istream& is, std::string& str) {
+        static char read_some(std::istream& is, std::string& str) {
             while (is.good()) {
                 switch (auto opt = is.get(); opt) {
                     case '['://str.push_back(opt); return opt;
@@ -101,16 +101,16 @@ namespace copac {
             return 0;
         }
 
-        char read_until(std::istream& is, std::string& str, std::initializer_list<char> del) {
+        static char read_until(std::istream& is, std::string& str, std::initializer_list<char> del) {
             auto ch = read_some(is, str);
             while(!match(ch, del)) 
                 ch = read_some(is, str);
             return ch;
         }
 
-        std::string& clear(std::string& str)  { str.clear();    return str; }
-        std::string& pop  (std::string& str)  { str.pop_back(); return str; }
-        std::string& squash(std::string& str) {
+        static std::string& clear(std::string& str)  { str.clear();    return str; }
+        static std::string& pop  (std::string& str)  { str.pop_back(); return str; }
+        static std::string& squash(std::string& str) {
             auto ch = str.back();
             str.clear();
             str.push_back(ch);

@@ -39,7 +39,7 @@ namespace copac {
         struct map {
             // requirements
             static_assert(detected_v<decltype(Base<Key,Key>().emplace(Key(), Key()))>);
-            
+
             template <typename Connector>
             using type = Base<Key, Connector>;
         };
@@ -70,7 +70,7 @@ namespace copac {
     }
 
     /// ===========================================================================================
-    /// decoratores
+    /// Decoratores
     /// @brief
     /// ===========================================================================================
     template <typename Type>
@@ -81,7 +81,7 @@ namespace copac {
     struct soft:std::reference_wrapper<Type> {
         soft(Type& a):std::reference_wrapper<Type>(a){}
     };
-    
+
     /// ===========================================================================================
     /// basic_var
     /// @brief
@@ -110,7 +110,7 @@ namespace copac {
             template <typename Callable, typename...Objs>
             static constexpr decltype(auto) visit(Callable&& fn, Objs&&... objs){
                 return std::visit(
-                    std::forward<Callable>(fn), 
+                    std::forward<Callable>(fn),
                     static_cast<const container_t&>(objs) ...);
             }
         };
@@ -131,33 +131,33 @@ namespace copac {
         template<typename Key>
         constexpr basic_var(std::initializer_list<std::pair<Key,basic_var>> l): conn_([&] {
               auto map = map_t();
-              for(auto&[k, v] : l) 
+              for(auto&[k, v] : l)
                 map.emplace(cast<typename map_t::key_type>(k), std::move(v));
               return map;
           }()){}
 
         constexpr basic_var(std::initializer_list<basic_var> l): conn_([&] {
               auto lst = list_t();
-              for(auto& v : l) 
+              for(auto& v : l)
                 lst.emplace_back(std::move(v));
               return lst;
           }()){}
 
-        /// visit 
+        /// visit
         template <typename Callable, typename...Vars>
         static constexpr auto visit(Callable&& fn, Vars&&... vs) {
-            return std::visit([&](auto&&...c){ 
-                return object::visit(std::forward<Callable>(fn), cast<object>(c)... ); 
+            return std::visit([&](auto&&...c){
+                return object::visit(std::forward<Callable>(fn), cast<object>(c)... );
             }, vs.conn_ ...);
         }
 
         /// links
         static constexpr auto link(soft<basic_var> a) {
             return std::visit(select{
-                [&](object& o) { 
-                    auto conn     = std::make_shared<object>(std::move(o));   
+                [&](object& o) {
+                    auto conn     = std::make_shared<object>(std::move(o));
                     a.get().conn_ = conn;
-                    return basic_var(std::weak_ptr(conn)); 
+                    return basic_var(std::weak_ptr(conn));
                 },
                 [](std::shared_ptr<object>& o) { return basic_var(std::weak_ptr(o)); },
                 [](std::weak_ptr<object>&   o) { return basic_var(o); }
@@ -166,13 +166,13 @@ namespace copac {
 
         static constexpr auto link(hard<basic_var> a) {
             return std::visit(select{
-                [&](object& o) { 
-                    auto conn     = std::make_shared<object>(std::move(o));   
+                [&](object& o) {
+                    auto conn     = std::make_shared<object>(std::move(o));
                     a.get().conn_ = conn;
-                    return basic_var(conn); 
+                    return basic_var(conn);
                 },
                 [](std::shared_ptr<object>& o) { return basic_var(o); },
-                [](std::weak_ptr<object>&   o) { return basic_var(o.lock()); } 
+                [](std::weak_ptr<object>&   o) { return basic_var(o.lock()); }
             }, a.get().conn_);
         }
 
@@ -187,5 +187,5 @@ namespace copac {
         concepts::string<std::string>,
         concepts::buffer<std::vector<uint8_t>>,
         concepts::integer<int>,
-        concepts::floating<double>> var;   
+        concepts::floating<double>> var;
 }
