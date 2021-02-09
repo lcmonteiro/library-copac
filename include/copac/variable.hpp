@@ -108,9 +108,15 @@ namespace copac {
             using container_t::container_t;
             using container_t::operator=;
             template <typename Callable, typename...Objs>
-            static constexpr decltype(auto) visit(Callable&& fn, Objs&&... objs){
+            static constexpr auto visit(Callable&& fn, Objs&... objs) {
                 return std::visit(
                     std::forward<Callable>(fn),
+                    static_cast<container_t&>(objs) ...);
+            }
+            template <typename Callable, typename...Objs>
+            static constexpr auto visit(Callable&& fn, const Objs&... objs) {
+                return std::visit(
+                    std::forward<Callable>(fn), 
                     static_cast<const container_t&>(objs) ...);
             }
         };
@@ -145,9 +151,15 @@ namespace copac {
 
         /// visit
         template <typename Callable, typename...Vars>
-        static constexpr auto visit(Callable&& fn, Vars&&... vs) {
-            return std::visit([&](auto&&...c){
-                return object::visit(std::forward<Callable>(fn), cast<object>(c)... );
+        static constexpr auto visit(Callable&& fn, const Vars&... vs) {
+            return std::visit([&](const auto&...c){
+                return object::visit(std::forward<Callable>(fn), cast<const object&>(c)... );
+            }, vs.conn_ ...);
+        }
+        template <typename Callable, typename...Vars>
+        static auto visit(Callable&& fn, Vars&... vs) {
+            return std::visit([&](auto&...c){
+                return object::visit(std::forward<Callable>(fn), cast<object&>(c)... );
             }, vs.conn_ ...);
         }
 

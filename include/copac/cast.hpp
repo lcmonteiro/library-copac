@@ -89,10 +89,10 @@ namespace copac {
 
     template<typename To, typename From>
     To cast(const From& val) {
-        return detail::cast<From, To>::value(val);
+        return detail::cast<From, std::decay_t<To>>::value(val);
     }      
     template<typename To, typename From>
     To cast(From& val) {
-        return detail::cast<From, To>::value(val);
+        return detail::cast<From, std::decay_t<To>>::value(val);
     }      
 }
