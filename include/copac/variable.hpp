@@ -67,6 +67,11 @@ namespace copac {
         struct floating {
             using type = Base;
         };
+
+        template <typename Base>
+        struct boolean {
+            using type = Base;
+        };
     }
 
     /// ===========================================================================================
@@ -91,6 +96,7 @@ namespace copac {
         typename List     , // = concepts::list<list_t>,
         typename String   , // = concepts::string<string_t>,
         typename Buffer   , // = concepts::buffer<buufer_t>,
+        typename Boolean  , // = concepts::boolean<boolean_t>
         typename Integer  , // = concepts::integer<int_t>,
         typename Floating   // = concepts::floating<float_t>
     >
@@ -102,6 +108,8 @@ namespace copac {
             typename Map::template  type<basic_var>,
             typename List::template type<basic_var>,
             typename String::type,
+            typename Buffer::type,
+            typename Boolean::type,
             typename Integer::type,
             typename Floating::type>;
         struct object : public container_t {
@@ -129,6 +137,7 @@ namespace copac {
         using buffer_t   = typename Buffer::type;
         using integer_t  = typename Integer::type;
         using floating_t = typename Floating::type;
+        using boolean_t  = typename Boolean::type;
 
         /// constructors
         template <typename... Args>
@@ -198,6 +207,7 @@ namespace copac {
         concepts::list<std::vector>,
         concepts::string<std::string>,
         concepts::buffer<std::vector<uint8_t>>,
+        concepts::boolean<bool>,
         concepts::integer<int>,
         concepts::floating<double>> var;
 }
