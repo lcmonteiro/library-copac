@@ -17,12 +17,14 @@ namespace copac {
     /// ===========================================================================================
     template<typename...Ts>
     std::ostream& operator<<(std::ostream &os, const basic_var<Ts...>& a) {
-        using map_t      = typename basic_var<Ts...>::map_t;
-        using list_t     = typename basic_var<Ts...>::list_t;
-        using string_t   = typename basic_var<Ts...>::string_t;
-        using buffer_t   = typename basic_var<Ts...>::buffer_t;
-        using integer_t  = typename basic_var<Ts...>::integer_t;
-        using floating_t = typename basic_var<Ts...>::floating_t;
+        using map_t       = typename basic_var<Ts...>::map_t;
+        using list_t      = typename basic_var<Ts...>::list_t;
+        using string_t    = typename basic_var<Ts...>::string_t;
+        using buffer_t    = typename basic_var<Ts...>::buffer_t;
+        using integer_t   = typename basic_var<Ts...>::integer_t;
+        using floating_t  = typename basic_var<Ts...>::floating_t;
+        using link_t      = typename basic_var<Ts...>::link_t;
+        
         basic_var<Ts...>::visit(select{
             [&os](const map_t& a){
                 os << '{';
@@ -55,8 +57,9 @@ namespace copac {
                 os << cast<string_t>(a); 
                 os << '"';
             },
-            [&os](const integer_t&  a){ os << cast<string_t>(a); },
-            [&os](const floating_t& a){ os << cast<string_t>(a); }
+            [&os](const integer_t&   a){ os << cast<string_t>(a); },
+            [&os](const floating_t&  a){ os << cast<string_t>(a); },
+            [&os](const link_t& a){  }
         }, a);
         return os;
     }
@@ -108,8 +111,8 @@ namespace copac {
             return ch;
         }
 
-        static std::string& clear(std::string& str)  { str.clear();    return str; }
-        static std::string& pop  (std::string& str)  { str.pop_back(); return str; }
+        static std::string& clear (std::string& str) { str.clear();    return str; }
+        static std::string& pop   (std::string& str) { str.pop_back(); return str; }
         static std::string& squash(std::string& str) {
             auto ch = str.back();
             str.clear();

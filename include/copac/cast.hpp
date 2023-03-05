@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <charconv>
 #include <string>
 #include <stdexcept>
 #include <type_traits>
@@ -16,7 +17,7 @@
 /// @brief
 /// standards types converters
 /// ===============================================================================================
-namespace copac {    
+namespace copac{    
     struct cast_error: std::runtime_error{
         using std::runtime_error::runtime_error;
     };
@@ -60,31 +61,33 @@ namespace copac {
             }
         };
 
-        template<typename From>
-        struct cast<From, std::string, std::enable_if_t<
-            std::is_integral_v<From>>>{
-            static std::string value(const From& val){ return std::to_string(val); }
+        template<typename... Ts, typename To>
+        struct cast<std::variant<Ts...>, To>{
+            static constexpr To value(const std::variant<Ts...>& var){
+                return std::visit([](const auto& v){ 
+                    return cast<decltype(v), std::decay_t<To>>::value(v); 
+                }, var);
+            }
         };
+
         template<typename From>
         struct cast<From, std::string, std::enable_if_t<
-            std::is_floating_point_v<From>>>{
-            static std::string value(const From& val){ return std::to_string(val); }
+            std::is_arithmetic_v<From>>>{
+            static std::string value(const From& val){ 
+                return std::to_string(val); 
+            }
         };
 
         template<typename From, typename To>
         struct cast<From, To, std::enable_if_t<
-            std::is_convertible_v<From, std::string> &&
-            std::is_integral_v<To>>>{
-            static To value(const std::string& val){ return std::stol(val); }
+            std::is_convertible_v<From, std::string_view> &&
+            std::is_arithmetic_v<To>>>{
+            static To value(const std::string_view& val){
+                To output{};
+                std::from_chars(std::cbegin(val), std::end(val), output);
+                return output;
+            }
         }; 
-        
-        template<typename From, typename To>
-        struct cast<From, To, std::enable_if_t<
-            std::is_convertible_v<From, std::string> &&
-            std::is_floating_point_v<To>>>{
-            static To value(const std::string& val){ return std::stod(val); }
-        }; 
-    
     } 
 
     template<typename To, typename From>

@@ -100,58 +100,31 @@ namespace copac {
         typename Integer  , // = concepts::integer<int_t>,
         typename Floating   // = concepts::floating<float_t>
     >
-    class basic_var {
-        template <typename Type>
-        using connector_t = std::shared_ptr<Type>;
-
-        using container_t = std::variant<
-            typename Map::template  type<basic_var>,
-            typename List::template type<basic_var>,
-            typename String::type,
-            typename Buffer::type,
-            typename Boolean::type,
-            typename Integer::type,
-            typename Floating::type>;
-        struct object : public container_t {
-            using container_t::container_t;
-            using container_t::operator=;
-            template <typename Callable, typename...Objs>
-            static constexpr auto visit(Callable&& fn, Objs&... objs) {
-                return std::visit(
-                    std::forward<Callable>(fn),
-                    static_cast<container_t&>(objs) ...);
-            }
-            template <typename Callable, typename...Objs>
-            static constexpr auto visit(Callable&& fn, const Objs&... objs) {
-                return std::visit(
-                    std::forward<Callable>(fn), 
-                    static_cast<const container_t&>(objs) ...);
-            }
-        };
-
+    class basic_var{
     public:
         /// types
-        using map_t      = typename Map::template  type<basic_var>;
-        using list_t     = typename List::template type<basic_var>;
-        using string_t   = typename String::type;
-        using buffer_t   = typename Buffer::type;
-        using integer_t  = typename Integer::type;
-        using floating_t = typename Floating::type;
-        using boolean_t  = typename Boolean::type;
-
+        using link_t      = std::variant<std::shared_ptr<basic_var>, std::weak_ptr<basic_var>>;
+        using map_t       = typename Map::template  type<basic_var>;
+        using list_t      = typename List::template type<basic_var>;
+        using string_t    = typename String::type;
+        using buffer_t    = typename Buffer::type;
+        using boolean_t   = typename Boolean::type;
+        using integer_t   = typename Integer::type;
+        using floating_t  = typename Floating::type;
+    public:
         /// constructors
         template <typename... Args>
-        constexpr basic_var(Args... args): conn_(std::forward<Args>(args)...) {}
+        constexpr basic_var(Args... args): obj_(std::forward<Args>(args)...){}
 
         template<typename Key>
-        constexpr basic_var(std::initializer_list<std::pair<Key,basic_var>> l): conn_([&] {
+        constexpr basic_var(std::initializer_list<std::pair<Key, basic_var>> l): obj_([&]{
               auto map = map_t();
               for(auto&[k, v] : l)
                 map.emplace(cast<typename map_t::key_type>(k), std::move(v));
               return map;
           }()){}
 
-        constexpr basic_var(std::initializer_list<basic_var> l): conn_([&] {
+        constexpr basic_var(std::initializer_list<basic_var> l): obj_([&]{
               auto lst = list_t();
               for(auto& v : l)
                 lst.emplace_back(std::move(v));
@@ -160,45 +133,65 @@ namespace copac {
 
         /// visit
         template <typename Callable, typename...Vars>
-        static constexpr auto visit(Callable&& fn, const Vars&... vs) {
-            return std::visit([&](const auto&...c){
-                return object::visit(std::forward<Callable>(fn), cast<const object&>(c)... );
-            }, vs.conn_ ...);
+        static constexpr auto visit(Callable&& fn, const Vars&... vs){
+            return object::visit(std::forward<Callable>(fn), vs.obj_ ... );
         }
         template <typename Callable, typename...Vars>
-        static auto visit(Callable&& fn, Vars&... vs) {
-            return std::visit([&](auto&...c){
-                return object::visit(std::forward<Callable>(fn), cast<object&>(c)... );
-            }, vs.conn_ ...);
+        static auto visit(Callable&& fn, Vars&... vs){
+            return object::visit(std::forward<Callable>(fn), vs.obj_ ... );
         }
 
         /// links
-        static constexpr auto link(soft<basic_var> a) {
-            return std::visit(select{
-                [&](object& o) {
-                    auto conn     = std::make_shared<object>(std::move(o));
-                    a.get().conn_ = conn;
-                    return basic_var(std::weak_ptr(conn));
+        static constexpr auto link(soft<basic_var> a){
+            return visit(select{
+                [&](const auto&){
+                    auto conn = std::make_shared<basic_var>(std::move(a.get()));
+                    a.get()   = conn;
+                    return basic_var{std::weak_ptr{conn}};
                 },
-                [](std::shared_ptr<object>& o) { return basic_var(std::weak_ptr(o)); },
-                [](std::weak_ptr<object>&   o) { return basic_var(o); }
-            }, a.get().conn_);
+                [&](const link_t& l){
+                    return std::visit([](auto& p){ 
+                        return basic_var{std::weak_ptr(p)}; 
+                    }, l);
+                }
+            }, a.get());
         }
-
-        static constexpr auto link(hard<basic_var> a) {
-            return std::visit(select{
-                [&](object& o) {
-                    auto conn     = std::make_shared<object>(std::move(o));
-                    a.get().conn_ = conn;
-                    return basic_var(conn);
+        static constexpr auto link(hard<basic_var> a){
+            return visit(select{
+                [&](const auto&){
+                    auto conn = std::make_shared<basic_var>(std::move(a.get()));
+                    a.get()   = conn;
+                    return basic_var{conn};
                 },
-                [](std::shared_ptr<object>& o) { return basic_var(o); },
-                [](std::weak_ptr<object>&   o) { return basic_var(o.lock()); }
-            }, a.get().conn_);
+                [&](const link_t& l){
+                    return std::visit(select{
+                        [](std::shared_ptr<basic_var>& p) { return basic_var{p}; }, 
+                        [](std::shared_ptr<basic_var>& p) { return basic_var{p.lock()}; } 
+                    }, l);
+                }
+            }, a.get());
         }
 
     private:
-        std::variant<object, std::shared_ptr<object>, std::weak_ptr<object>> conn_;
+        /// internal container to handle all type of objects
+        using container_t = std::variant<
+            link_t, map_t, list_t, string_t, buffer_t, boolean_t, integer_t, floating_t>;
+        struct object : public container_t {
+            using container_t::container_t;
+            using container_t::operator=;
+            template <typename Callable, typename...Objs>
+            static constexpr auto visit(Callable&& fn, Objs&... objs){
+                return std::visit(
+                    std::forward<Callable>(fn),
+                    static_cast<container_t&>(objs) ...);
+            }
+            template <typename Callable, typename...Objs>
+            static constexpr auto visit(Callable&& fn, const Objs&... objs){
+                return std::visit(
+                    std::forward<Callable>(fn), 
+                    static_cast<const container_t&>(objs) ...);
+            }
+        } obj_;
     };
 
     /// default variable type

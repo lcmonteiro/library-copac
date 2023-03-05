@@ -37,5 +37,6 @@ TARGET
 	copac
 TEST_SOURCES
 	./src/copac_test.cpp
+	./src/copac_stream_test.cpp
 )
 
